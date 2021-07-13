@@ -682,7 +682,7 @@ int main(int argc, char* argv[])
             {
                 if(ch == '*' || ch == '-')
                 {
-                    uint count = 1;
+                    uint32_t count = 1;
 
                     for(; i < line.length(); i++)
                     {
