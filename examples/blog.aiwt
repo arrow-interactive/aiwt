@@ -1,0 +1,9 @@
+(head
+    @title Blog 1
+)
+
+(body
+    # Blog 1 - AIWT
+    AIWT is a piece of software written by Gabryx64
+    > Create websites using a simple markdown based language
+)

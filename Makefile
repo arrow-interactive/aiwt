@@ -14,9 +14,11 @@ objs = $(patsubst $(srcdir)/%,$(objdir)/%,$(srcs:.cpp=.o))
 cxxflags = -std=c++14 -Os -O3 -pedantic -Iinclude
 ldflags = -s -Wall -Wextra
 
+.PHONY: clean
+
 all: $(outdir)/$(target)
 
-# Compiile
+# Compile
 $(objdir)/%.o: $(srcdir)/%.cpp
 	$(CXX) -c $< $(cxxflags) -o $@
 

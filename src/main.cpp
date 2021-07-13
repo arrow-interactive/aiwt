@@ -1,4 +1,5 @@
 #include<cstdio>
+#include<cstring>
 #include<fstream>
 #include<string>
 #include<vector>
@@ -17,14 +18,45 @@ void replace_all(std::string& data, std::string from, std::string to)
 int main(int argc, char* argv[])
 {
     if(argc < 2)
-        fprintf(stderr, "Usage: `%s srcfile`", argv[0]);
+    {
+        fprintf(stderr, "Usage: `%s [-o outfile (default:out.html)]srcfile`", argv[0]);
+        exit(EXIT_FAILURE);
+    }
 
-    std::ifstream src_file(argv[1]);
+    bool outfileset = false;
+    std::string srcfilepath, outfilepath = "out.html";
+
+    for(int i = 1; i < argc; i++)
+    {
+        if(strcmp(argv[i], "-o") == 0)
+        {
+            if(++i >= argc || outfileset)
+            {
+                fprintf(stderr, "Usage: `%s [-o outfile (default:out.html)]srcfile`", argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            outfilepath = argv[i];
+            outfileset = true;
+        }
+        else
+        {
+            if(srcfilepath.compare("") != 0)
+            {
+                fprintf(stderr, "Usage: `%s [-o outfile (default:out.html)]srcfile`", argv[0]);
+                exit(EXIT_FAILURE);
+            }
+
+            srcfilepath = argv[i];
+        }
+    }
+
+    std::ifstream srcfile(srcfilepath);
     std::vector<std::string> lines{};
 
     {
         std::string line;
-        while(std::getline(src_file, line))
+        while(std::getline(srcfile, line))
             lines.push_back(line);
     }
 
@@ -94,7 +126,7 @@ int main(int argc, char* argv[])
             references[refid][1] = title;
             break;
         }
-    } 
+    }
 
     std::string out = "<!DOCTYPE html>\n<html>\n\t";
 
@@ -113,6 +145,13 @@ int main(int argc, char* argv[])
     {
         std::string line = lines[li];
 
+        if(line.length() == 0)
+        {
+            out += '\n';
+            for(size_t j = 0; j < element_stack.size() + 1; j++)
+                out += '\t';
+        }
+
         int spaces = 0;
         bool code_block = false;
         for(size_t i = 0; i < line.length(); i++)
@@ -122,17 +161,16 @@ int main(int argc, char* argv[])
             if(ch == ' ')
             {
                 spaces++;
-
-                if(spaces >= 4)
-                    code_block = true;
-
                 continue;
             }
             if(ch == '\t')
             {
-                code_block = true;
+                spaces += 4;
                 continue;
             }
+
+            if(spaces >= 4 * (element_stack.size() + 1))
+                code_block = true;
 
             if(isdigit(ch))
             {
@@ -606,10 +644,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = line.substr(op_pos, op_pos - cl_pos);
-                        replace_all(tmp, "&", "&amp;");                                     // TODO: Make inline code more conformant to markdown's standard
-                        replace_all(tmp, "<", "&lt;");
-                        replace_all(tmp, ">", "&gt;");
+                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -663,7 +698,7 @@ int main(int argc, char* argv[])
 
                         count = 0;
                         break;
-                    }          
+                    }
 
                     if(count >= 3)
                     {
@@ -672,12 +707,12 @@ int main(int argc, char* argv[])
                             out += "</ul>\n";
                             for(size_t j = 0; j < element_stack.size() + 1; j++)
                                 out += '\t';
-        
+
                             list_type = NO_LIST;
                         }
 
                         if(code_block)
-                            out += "<p>&lt;hr&gt;</p>\n";
+                            out += "<code><p>hr</p><code>\n";
                         else
                             out += "<hr>\n";
 
@@ -687,7 +722,7 @@ int main(int argc, char* argv[])
                         break;
                     }
                 }
-                
+
                 if(list_type == ORDERED_LIST)
                 {
                     out += "</ol>\n";
@@ -1146,10 +1181,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = line.substr(op_pos, op_pos - cl_pos);
-                        replace_all(tmp, "&", "&amp;");                                     // TODO: Make inline code more conformant to markdown's standard
-                        replace_all(tmp, "<", "&lt;");
-                        replace_all(tmp, ">", "&gt;");
+                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -1182,7 +1214,92 @@ int main(int argc, char* argv[])
                     list_type = NO_LIST;
                 }
             }
-            
+
+            if(ch == '(')
+            {
+                std::string elem_tag = "";
+                for(i++; i < line.length() && line[i] != ' ' && line[i] != '<'; i++)
+                    elem_tag += line[i];
+
+                std::unordered_map<std::string, std::string> attrs{};
+                if(line[i] == '<')
+                {
+                    for(i++; i < line.length(); i++)
+                    {
+                        if(line[i] == '>')
+                            break;
+
+                        if(ch == ' ' || ch == '\t')
+                            continue;
+
+                        std::string key, value;
+                        int start_index = i;
+                        for(; i < line.length(); i++)
+                        {
+                            if(line[i] == '=')
+                                break;
+                        }
+
+                        key = line.substr(start_index, i - start_index);
+
+                        start_index = ++i;
+                        for(i++; i < line.length(); i++)
+                        {
+                            if(line[i] == ' ' || line[i] == '\t' || line[i] == '>')
+                                break;
+                        }
+
+                        value = line.substr(start_index, i - start_index);
+
+                        attrs.insert(std::pair<std::string, std::string>(key, value));
+
+                        if(line[i] == '>')
+                            break;
+                    }
+
+                    i++;
+                }
+
+                out += '<' + elem_tag;
+
+                for(auto attr : attrs)
+                    out += ' ' + attr.first + '=' + attr.second;
+
+                out += ">\n";
+
+                element_stack.push_back(elem_tag);
+
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                spaces = 0;
+
+                for(i++; i < line.length(); i++)
+                {
+                    ch = line[i];
+                    if(ch == ' ')
+                    {
+                        spaces++;
+                        continue;
+                    }
+                    if(ch == '\t')
+                    {
+                        spaces += 4;
+                        continue;
+                    }
+                    else
+                        break;
+
+                    if(spaces >= 4 * (element_stack.size() + 1))
+                        code_block = true;
+
+                    i++;
+                }
+
+                if(i >= line.length())
+                    break;
+            }
+
             if(ch == '>')
             {
                 if(!quote_block)
@@ -1211,31 +1328,27 @@ int main(int argc, char* argv[])
 
                 spaces = 0;
 
-                if(i >= line.length())
-                    continue;
-
-                ch = line[++i];
-                while(ch != ' ' && ch != '\t' && i < line.length())
+                for(i++; i < line.length(); i++)
                 {
+                    ch = line[i];
                     if(ch == ' ')
                     {
                         spaces++;
-
-                        if(spaces >= 4)
-                            code_block = true;
-
                         continue;
                     }
                     if(ch == '\t')
                     {
-                        code_block = true;
+                        spaces += 4;
                         continue;
                     }
+                    else
+                        break;
 
-                    ch = line[++i];
+                    if(spaces >= 4 * (element_stack.size() + 1))
+                        code_block = true;
                 }
             }
-            else if(ch != '>' || code_block)
+            else
             {
                 if(quote_block)
                 {
@@ -1255,6 +1368,20 @@ int main(int argc, char* argv[])
                         out += '\t';
 
                     quote_block = false;
+                }
+            }
+
+            if(line.substr(i).compare(")") == 0  && list_type == NO_LIST && !quote_block)
+            {
+                if(element_stack.size() > 0)
+                {
+                    out.replace(out.size() - 1, 1, "</" + element_stack.back() + ">\n");
+                    element_stack.pop_back();
+
+                    for(size_t j = 0; j < element_stack.size() + 1; j++)
+                        out += '\t';
+
+                    break;
                 }
             }
 
@@ -1527,7 +1654,7 @@ int main(int argc, char* argv[])
                             size_t pos = line.find(']', i);
                             if(pos == std::string::npos)
                                 break;
-                            
+
                             refid = line.substr(++i, pos - i - 1);
 
                             i = pos + 1;
@@ -1699,10 +1826,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = line.substr(op_pos, op_pos - cl_pos);
-                        replace_all(tmp, "&", "&amp;");
-                        replace_all(tmp, "<", "&lt;");
-                        replace_all(tmp, ">", "&gt;");
+                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -1731,6 +1855,10 @@ int main(int argc, char* argv[])
             }
             else if(ch == '@')
             {
+                std::string elem_tag = "";
+                for(i++; i < line.length() && line[i] != ' ' && line[i] != '<'; i++)
+                    elem_tag += line[i];
+
                 std::unordered_map<std::string, std::string> attrs{};
                 if(line[i] == '<')
                 {
@@ -1990,7 +2118,7 @@ int main(int argc, char* argv[])
                             size_t pos = line.find(']', i);
                             if(pos == std::string::npos)
                                 break;
-                            
+
                             refid = line.substr(++i, pos - i - 1);
 
                             i = pos + 1;
@@ -2163,17 +2291,14 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = line.substr(op_pos, op_pos - cl_pos);
-                        replace_all(tmp, "&", "&amp;");
-                        replace_all(tmp, "<", "&lt;");
-                        replace_all(tmp, ">", "&gt;");
+                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
                     }
                 }
 
-                std::string tmp = "<p";
+                std::string tmp = '<' + elem_tag;
 
                 for(auto attr : attrs)
                     tmp += ' ' + attr.first + '=' + attr.second;
@@ -2181,7 +2306,7 @@ int main(int argc, char* argv[])
                 tmp += '>' + line.substr(substr_start);
                 if(tmp.substr(tmp.size() - 2).compare("  ") == 0)
                     tmp.replace(tmp.size() - 2, 2, "<br>");
-                tmp += "</p>";
+                tmp += "</" + elem_tag + '>';
 
                 if(code_block)
                     out += "<code>" + tmp + "</code>\n";
@@ -2192,7 +2317,7 @@ int main(int argc, char* argv[])
                     out += '\t';
 
                 break;
-            }      
+            }
             else
             {
                 std::unordered_map<std::string, std::string> attrs{};
@@ -2454,7 +2579,7 @@ int main(int argc, char* argv[])
                             size_t pos = line.find(']', i);
                             if(pos == std::string::npos)
                                 break;
-                            
+
                             refid = line.substr(++i, pos - i - 1);
 
                             i = pos + 1;
@@ -2627,10 +2752,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = line.substr(op_pos, op_pos - cl_pos);
-                        replace_all(tmp, "&", "&amp;");
-                        replace_all(tmp, "<", "&lt;");
-                        replace_all(tmp, ">", "&gt;");
+                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -2678,12 +2800,44 @@ int main(int argc, char* argv[])
 
                 list_type = NO_LIST;
             }
+
+            if(quote_block)
+            {
+                std::string tmp = "</blockquotes>";
+                if(!is_quote_real)
+                {
+                    tmp += "</code>\n";
+                }
+                else
+                {
+                    tmp += '\n';
+                }
+
+                out += tmp;
+
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                quote_block = false;
+            }
+
+            while(element_stack.size() > 0)
+            {
+                out.replace(out.size() - 1, 1, "</" + element_stack.back() + ">\n");
+                element_stack.pop_back();
+
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                break;
+            }
         }
     }
 
-    out.replace(out.size() - 1, 1, "</html>");
+    out.replace(out.size() - 1, 1, "</html>\n\0");
 
-    printf("%s\n", out.c_str());
+    std::ofstream outfile(outfilepath);
+    outfile.write(out.c_str(), out.length());
 
     return 0;
 }
