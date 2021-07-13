@@ -12,7 +12,7 @@ srcs = $(wildcard $(srcdir)/*.cpp)
 objs = $(patsubst $(srcdir)/%,$(objdir)/%,$(srcs:.cpp=.o))
 
 cxxflags = -std=c++14 -Os -O3 -pedantic -Iinclude
-ldflags = -s -Wall -Wextra
+ldflags = -s -Wall -Wextra -static-libstdc++
 
 .PHONY: clean
 
