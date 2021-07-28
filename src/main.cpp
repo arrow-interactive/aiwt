@@ -1308,7 +1308,7 @@ int main(int argc, char* argv[])
 
                     quote_block = true;
 
-                    std::string tmp = "<blockquotes>";
+                    std::string tmp = "<blockquote>";
                     if(code_block)
                     {
                         is_quote_real = false;
@@ -1352,7 +1352,7 @@ int main(int argc, char* argv[])
             {
                 if(quote_block)
                 {
-                    std::string tmp = "</blockquotes>";
+                    std::string tmp = "</blockquote>";
                     if(!is_quote_real)
                     {
                         tmp += "</code>\n";
@@ -1841,7 +1841,7 @@ int main(int argc, char* argv[])
                 tmp += '>' + line.substr(substr_start);
                 if(tmp.substr(tmp.size() - 2).compare("  ") == 0)
                     tmp.replace(tmp.size() - 2, 2, "<br>");
-                tmp += "</h>";
+                tmp += "</h" + std::to_string(heading_level) + '>';
 
                 if(code_block)
                     out += "<code>" + tmp + "</code>\n";
@@ -2803,7 +2803,7 @@ int main(int argc, char* argv[])
 
             if(quote_block)
             {
-                std::string tmp = "</blockquotes>";
+                std::string tmp = "</blockquote>";
                 if(!is_quote_real)
                 {
                     tmp += "</code>\n";
