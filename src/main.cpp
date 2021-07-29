@@ -147,6 +147,44 @@ int main(int argc, char* argv[])
 
         if(line.length() == 0)
         {
+            if(quote_block)
+            {
+                std::string tmp = "</blockquote>";
+                if(!is_quote_real)
+                {
+                    tmp += "</code>\n";
+                }
+                else
+                {
+                    tmp += '\n';
+                }
+
+                out += tmp;
+
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                quote_block = false;
+            }
+
+            if(list_type == ORDERED_LIST)
+            {
+                out += "</ol>\n";
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                list_type = NO_LIST;
+            }
+
+            if(list_type == UNORDERED_LIST)
+            {
+                out += "</ul>\n";
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                list_type = NO_LIST;
+            }
+
             out += '\n';
             for(size_t j = 0; j < element_stack.size() + 1; j++)
                 out += '\t';
@@ -171,6 +209,44 @@ int main(int argc, char* argv[])
 
             if(spaces >= 4 * (element_stack.size() + 1))
                 code_block = true;
+
+            if(ch != '>' && quote_block)
+            {
+                std::string tmp = "</blockquote>";
+                if(!is_quote_real)
+                {
+                    tmp += "</code>\n";
+                }
+                else
+                {
+                    tmp += '\n';
+                }
+
+                out += tmp;
+
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                quote_block = false;
+            }
+
+            if(!isdigit(ch) && list_type == ORDERED_LIST)
+            {
+                out += "</ol>\n";
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                list_type = NO_LIST;
+            }
+
+            if(ch != '*' && ch != '-' && ch != '+' && list_type == UNORDERED_LIST)
+            {
+                out += "</ul>\n";
+                for(size_t j = 0; j < element_stack.size() + 1; j++)
+                    out += '\t';
+
+                list_type = NO_LIST;
+            }
 
             if(isdigit(ch))
             {
@@ -644,7 +720,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
+                        std::string tmp = "<code>" + line.substr(op_pos + 1, cl_pos  - op_pos - 1) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -665,17 +741,6 @@ int main(int argc, char* argv[])
                     out += '\t';
 
                 break;
-            }
-            else
-            {
-                if(list_type == ORDERED_LIST)
-                {
-                    out += "</ol>\n";
-                    for(size_t j = 0; j < element_stack.size() + 1; j++)
-                        out += '\t';
-
-                    list_type = NO_LIST;
-                }
             }
 
             if(ch == '*' || ch == '-' || ch == '+')
@@ -1181,7 +1246,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
+                        std::string tmp = "<code>" + line.substr(op_pos + 1, cl_pos  - op_pos - 1) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -1202,17 +1267,6 @@ int main(int argc, char* argv[])
                     out += '\t';
 
                 break;
-            }
-            else
-            {
-                if(list_type == UNORDERED_LIST)
-                {
-                    out += "</ul>\n";
-                    for(size_t j = 0; j < element_stack.size() + 1; j++)
-                        out += '\t';
-
-                    list_type = NO_LIST;
-                }
             }
 
             if(ch == '(')
@@ -1346,28 +1400,6 @@ int main(int argc, char* argv[])
 
                     if(spaces >= 4 * (element_stack.size() + 1))
                         code_block = true;
-                }
-            }
-            else
-            {
-                if(quote_block)
-                {
-                    std::string tmp = "</blockquote>";
-                    if(!is_quote_real)
-                    {
-                        tmp += "</code>\n";
-                    }
-                    else
-                    {
-                        tmp += '\n';
-                    }
-
-                    out += tmp;
-
-                    for(size_t j = 0; j < element_stack.size() + 1; j++)
-                        out += '\t';
-
-                    quote_block = false;
                 }
             }
 
@@ -1826,7 +1858,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
+                        std::string tmp = "<code>" + line.substr(op_pos + 1, cl_pos  - op_pos - 1) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -2291,7 +2323,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
+                        std::string tmp = "<code>" + line.substr(op_pos + 1, cl_pos  - op_pos - 1) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
@@ -2752,7 +2784,7 @@ int main(int argc, char* argv[])
                         if(cl_pos == std::string::npos)
                             break;
 
-                        std::string tmp = "<code>" + line.substr(op_pos, op_pos - cl_pos) + "</code>";
+                        std::string tmp = "<code>" + line.substr(op_pos + 1, cl_pos  - op_pos - 1) + "</code>";
                         line.replace(op_pos, op_pos - cl_pos, tmp);
 
                         op_pos = line.find("`", op_pos + tmp.length());
